@@ -6,6 +6,9 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
+
 
 #include "ciri/core.h"
 #include "ciri/node.h"
@@ -14,6 +17,36 @@
 #define MAIN_LOGGER_ID "main"
 
 static core_t core_g;
+
+
+static void signal_sigint_exit_handler(int signal_no) {
+
+  int ret = EXIT_SUCCESS;
+
+  fprintf(stdout, "Stopping cIRI core\n");
+  if (core_stop(&core_g)) {
+    fprintf(stderr, "Stopping cIRI core failed\n");
+    ret = EXIT_FAILURE;
+  }
+
+  fprintf(stdout, "Destroying cIRI core\n");
+  if (core_destroy(&core_g)) {
+    fprintf(stderr, "Destroying cIRI core\n");
+    ret = EXIT_FAILURE;
+  }
+
+  exit(ret);
+
+}
+
+int init_signals(void) {
+    if (signal(SIGINT, signal_sigint_exit_handler) == SIG_ERR) {
+        fprintf(stderr, "Initializing cIRI signals failed \n");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
 
 int main() {
   int ret = EXIT_SUCCESS;
@@ -25,6 +58,8 @@ int main() {
   logger_output_register(stdout);
   logger_output_level_set(stdout, LOGGER_DEBUG);
   logger_helper_init(MAIN_LOGGER_ID, LOGGER_DEBUG, true);
+
+  init_signals();
 
   log_info(MAIN_LOGGER_ID, "Initializing cIRI core\n");
   if (core_init(&core_g)) {
